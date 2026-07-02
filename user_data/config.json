@@ -67,7 +67,7 @@
         "listen_port": 8080,
         "verbosity": "error",
         "enable_openapi": false,
-        "jwt_secret_key": "change-this-to-a-random-string",
+        "jwt_secret_key": "mmd-freqtrade-secret-key-2026-xyz123",
         "CORS_origins": [],
         "username": "freqtrader",
         "password": "change-this-password"
