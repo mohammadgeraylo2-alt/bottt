@@ -1,5 +1,5 @@
 {
-    "max_open_trades": 5,
+    "max_open_trades": 8,
     "stake_currency": "USDT",
     "stake_amount": "unlimited",
     "tradable_balance_ratio": 0.99,
@@ -8,7 +8,11 @@
     "dry_run_wallet": 1000,
     "cancel_open_orders_on_exit": false,
     "trading_mode": "spot",
-    "timeframe": "1h",
+    "timeframe": "5m",
+
+    "use_exit_signal": true,
+    "exit_profit_only": false,
+    "ignore_roi_if_entry_signal": true,
 
     "unfilledtimeout": {
         "entry": 10,
@@ -39,26 +43,26 @@
         "password": "",
         "ccxt_config": {},
         "ccxt_async_config": {},
-        "pair_whitelist": [
-            "BTC/USDT",
-            "ETH/USDT",
-            "SOL/USDT",
-            "BNB/USDT",
-            "XRP/USDT"
-        ],
-        "pair_blacklist": []
+        "pair_whitelist": [],
+        "pair_blacklist": [
+            ".*(BULL|BEAR|UP|DOWN)/.*"
+        ]
     },
 
     "pairlists": [
         {
-            "method": "StaticPairList"
+            "method": "VolumePairList",
+            "number_assets": 40,
+            "sort_key": "quoteVolume",
+            "min_days_listed": 10,
+            "refresh_period": 1800
         }
     ],
 
     "telegram": {
         "enabled": true,
-        "token": "8982339834:AAG5wWqhlBiMysu4uZ7KPH_nKxZO9ywYwTg",
-        "chat_id": "6206120591"
+        "token": "PUT_YOUR_TELEGRAM_BOT_TOKEN_HERE",
+        "chat_id": "PUT_YOUR_TELEGRAM_CHAT_ID_HERE"
     },
 
     "api_server": {
@@ -67,7 +71,7 @@
         "listen_port": 8080,
         "verbosity": "error",
         "enable_openapi": false,
-        "jwt_secret_key": "mmd-freqtrade-secret-key-2026-xyz123",
+        "jwt_secret_key": "PUT_A_RANDOM_STRING_AT_LEAST_32_CHARS_HERE",
         "CORS_origins": [],
         "username": "freqtrader",
         "password": "change-this-password"
