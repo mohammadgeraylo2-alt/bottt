@@ -61,8 +61,8 @@
 
     "telegram": {
         "enabled": true,
-        "token": "PUT_YOUR_TELEGRAM_BOT_TOKEN_HERE",
-        "chat_id": "PUT_YOUR_TELEGRAM_CHAT_ID_HERE"
+        "token": "8982339834:AAG5wWqhlBiMysu4uZ7KPH_nKxZO9ywYwTg",
+        "chat_id": "6206120591"
     },
 
     "api_server": {
@@ -71,7 +71,7 @@
         "listen_port": 8080,
         "verbosity": "error",
         "enable_openapi": false,
-        "jwt_secret_key": "PUT_A_RANDOM_STRING_AT_LEAST_32_CHARS_HERE",
+        "jwt_secret_key": "mmd-freqtrade-secret-key-2026-xyz123",
         "CORS_origins": [],
         "username": "freqtrader",
         "password": "change-this-password"
