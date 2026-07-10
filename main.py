@@ -384,7 +384,7 @@ def make_verification_bot(
                     print("[" + bot_label + "] khata dar delete kardane payam start: " + str(e))
 
                 expired_text = (
-                    "⏳ پیام قبلی منقضی شد و برای امنیت پاک شد.\n\n"
+                    "⏳ پیام قبلی پاک شد.\n\n"
                     "برای دریافت دوباره‌ی اطلاعات، فقط کافیه یک بار دیگه بزنی روی /start 🔁"
                 )
 
