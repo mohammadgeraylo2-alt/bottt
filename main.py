@@ -48,48 +48,32 @@ def get_file_id(file_obj):
 
 
 async def forward_screenshot_to_admin(bot: Robot, message: Message, file_id):
-    file_url = None
-
-    # talash baraye peida kardan link download file
-    for method_name in ("get_file", "get_file_url", "download_file"):
-        method = getattr(bot, method_name, None)
-        if method is None:
-            continue
+    if not file_id:
         try:
-            result = await method(file_id)
-            if isinstance(result, str):
-                file_url = result
-            elif isinstance(result, dict):
-                file_url = result.get("download_url") or result.get("url") or result.get("file_url")
-            if file_url:
-                break
+            await bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text="Screenshot jadid amad vali file_id peida nashod.\nchat_id: " + str(message.chat_id),
+            )
         except Exception as e:
-            print("khata dar " + method_name + ": " + str(e))
+            print("khata dar ersal matn be admin: " + str(e))
+        return
 
-    if file_url:
-        for method_name in ("send_photo", "send_image"):
-            method = getattr(bot, method_name, None)
-            if method is None:
-                continue
-            try:
-                await method(
-                    chat_id=ADMIN_CHAT_ID,
-                    path=file_url,
-                    text="Screenshot jadid az user\nchat_id: " + str(message.chat_id),
-                )
-                return
-            except Exception as e:
-                print("khata dar " + method_name + ": " + str(e))
-
-    # fallback: faghat matn befrest age aks nashod
     try:
-        await bot.send_message(
+        await bot.send_image(
             chat_id=ADMIN_CHAT_ID,
-            text="Screenshot jadid az user (nashod aks ro befrestam)\nchat_id: " + str(message.chat_id) +
-            "\nfile_id: " + str(file_id),
+            file_id=file_id,
+            text="Screenshot jadid az user\nchat_id: " + str(message.chat_id),
         )
     except Exception as e:
-        print("khata dar ersal matn be admin: " + str(e))
+        print("khata dar send_image: " + str(e))
+        try:
+            await bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text="Screenshot jadid az user (nashod aks ro befrestam)\nchat_id: " + str(message.chat_id) +
+                "\nfile_id: " + str(file_id),
+            )
+        except Exception as e2:
+            print("khata dar ersal matn be admin: " + str(e2))
 
 
 @bot.on_message(commands=["start"])
