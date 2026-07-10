@@ -36,6 +36,17 @@ texts = load_texts()
 bot = Robot(BOT_TOKEN)
 
 
+def get_file_id(file_obj):
+    if file_obj is None:
+        return None
+    file_id = getattr(file_obj, "file_id", None)
+    if file_id is not None:
+        return file_id
+    if isinstance(file_obj, dict):
+        return file_obj.get("file_id")
+    return None
+
+
 @bot.on_message(commands=["start"])
 async def start(bot: Robot, message: Message):
     await message.reply(texts["start_message"])
@@ -71,10 +82,11 @@ async def handle_message(bot: Robot, message: Message):
         await message.reply(texts["screenshot_reply"])
 
         if ADMIN_CHAT_ID and message.chat_id != ADMIN_CHAT_ID:
+            file_id = get_file_id(message.file)
             await bot.send_message(
                 ADMIN_CHAT_ID,
                 "Screenshot jadid az user\nchat_id: " + str(message.chat_id) +
-                "\nfile_id: " + str(message.file.get("file_id")),
+                "\nfile_id: " + str(file_id),
             )
         return
 
@@ -82,3 +94,4 @@ async def handle_message(bot: Robot, message: Message):
 if __name__ == "__main__":
     print("Rubika bot started")
     bot.run()
+            
