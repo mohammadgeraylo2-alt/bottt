@@ -2,3 +2,4 @@ rubka
 pytesseract
 pillow
 jdatetime
+tzdata
