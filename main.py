@@ -4,7 +4,13 @@ from rubka import Robot
 from rubka.context import Message
 
 BOT_TOKEN = os.environ["RUBIKA_BOT_TOKEN"]
-ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "")
+import os
+import json
+from rubka import Robot
+from rubka.context import Message
+
+BOT_TOKEN = os.environ["RUBIKA_BOT_TOKEN"]
+ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "").strip()
 
 TEXTS_FILE = "texts.json"
 
