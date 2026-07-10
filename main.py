@@ -48,32 +48,24 @@ def get_file_id(file_obj):
 
 
 async def forward_screenshot_to_admin(bot: Robot, message: Message, file_id):
-    if not file_id:
-        try:
-            await bot.send_message(
-                chat_id=ADMIN_CHAT_ID,
-                text="Screenshot jadid amad vali file_id peida nashod.\nchat_id: " + str(message.chat_id),
-            )
-        except Exception as e:
-            print("khata dar ersal matn be admin: " + str(e))
+    try:
+        await bot.forward_message(
+            from_chat_id=message.chat_id,
+            message_id=message.message_id,
+            to_chat_id=ADMIN_CHAT_ID,
+        )
         return
+    except Exception as e:
+        print("khata dar forward_message: " + str(e))
 
     try:
-        await bot.send_image(
+        await bot.send_message(
             chat_id=ADMIN_CHAT_ID,
-            file_id=file_id,
-            text="Screenshot jadid az user\nchat_id: " + str(message.chat_id),
+            text="Screenshot jadid az user (nashod forward konam)\nchat_id: " + str(message.chat_id) +
+            "\nfile_id: " + str(file_id),
         )
-    except Exception as e:
-        print("khata dar send_image: " + str(e))
-        try:
-            await bot.send_message(
-                chat_id=ADMIN_CHAT_ID,
-                text="Screenshot jadid az user (nashod aks ro befrestam)\nchat_id: " + str(message.chat_id) +
-                "\nfile_id: " + str(file_id),
-            )
-        except Exception as e2:
-            print("khata dar ersal matn be admin: " + str(e2))
+    except Exception as e2:
+        print("khata dar ersal matn be admin: " + str(e2))
 
 
 @bot.on_message(commands=["start"])
@@ -118,8 +110,6 @@ async def _handle_message_inner(bot: Robot, message: Message):
             return
 
     if getattr(message, "file", None):
-        print("file info: " + str(getattr(message.file, "__dict__", message.file)))
-        print("raw_data: " + str(getattr(message, "raw_data", None)))
         await message.reply(texts["screenshot_reply"])
 
         if ADMIN_CHAT_ID and message.chat_id != ADMIN_CHAT_ID:
