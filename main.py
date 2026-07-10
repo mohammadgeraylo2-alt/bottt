@@ -1,6 +1,8 @@
 import os
 import json
 import threading
+import pytesseract
+from PIL import Image
 from rubka import Robot
 from rubka.context import Message
 
@@ -60,7 +62,7 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
         def register_user(chat_id):
             users = settings.setdefault("users", {})
             if chat_id not in users:
-                users[chat_id] = {"status": "pending", "screenshots": 0}
+                users[chat_id] = {"status": "pending", "screenshots": 0, "profile_ss": False, "history_ss": False}
                 save_settings(settings)
 
         def get_file_id(file_obj):
@@ -72,6 +74,31 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
             if isinstance(file_obj, dict):
                 return file_obj.get("file_id")
             return None
+
+        def ocr_extract_text(image_path):
+            try:
+                img = Image.open(image_path)
+                text = pytesseract.image_to_string(img, lang="fas")
+                return text
+            except Exception as e:
+                print("[" + bot_label + "] khata dar OCR: " + str(e))
+                return ""
+
+        def detect_screenshot_type(ocr_text):
+            # in kalamat ro donbal migardim (mamkene OCR kamel dorost nabashe pas chandta variation check mikonim)
+            profile_keywords = ["احراز هویت شده", "احراز هویت"]
+            history_keywords = ["هدیه میلی", "کد معرف", "تکمیل پروفایل"]
+
+            is_profile = any(k in ocr_text for k in profile_keywords)
+            is_history = any(k in ocr_text for k in history_keywords)
+
+            if is_profile and not is_history:
+                return "profile"
+            if is_history and not is_profile:
+                return "history"
+            if is_profile and is_history:
+                return "both"
+            return "unknown"
 
         async def download_screenshot(bot: Robot, file_id):
             try:
@@ -93,11 +120,19 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
 
             return None
 
-        async def forward_screenshot_to_reviewer(bot: Robot, message: Message, file_id):
+        async def forward_screenshot_to_reviewer(bot: Robot, message: Message, file_id, ocr_text="", ss_type="unknown"):
             review_admin = settings.get("review_admin_chat_id")
             if not review_admin:
                 print("[" + bot_label + "] hich review_admin tanzim nashode.")
                 return
+
+            info_text = (
+                "chat_id: " + str(message.chat_id) +
+                "\ntashkhis OCR: " + ss_type +
+                "\nmatn OCR (100 harf aval): " + ocr_text[:100].replace("\n", " ") +
+                "\nbaraye tayid dasti: /approve " + str(message.chat_id) +
+                "\nbaraye rad: /reject " + str(message.chat_id)
+            )
 
             try:
                 await bot.forward_message(
@@ -106,12 +141,7 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
                     to_chat_id=review_admin,
                 )
                 try:
-                    await bot.send_message(
-                        chat_id=review_admin,
-                        text="chat_id in user: " + str(message.chat_id) +
-                        "\nbaraye tayid: /approve " + str(message.chat_id) +
-                        "\nbaraye rad: /reject " + str(message.chat_id),
-                    )
+                    await bot.send_message(chat_id=review_admin, text=info_text)
                 except Exception:
                     pass
                 return
@@ -121,13 +151,11 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
             try:
                 await bot.send_message(
                     chat_id=review_admin,
-                    text="Screenshot jadid az user (nashod forward konam)\nchat_id: " + str(message.chat_id) +
-                    "\nfile_id: " + str(file_id) +
-                    "\nbaraye tayid: /approve " + str(message.chat_id) +
-                    "\nbaraye rad: /reject " + str(message.chat_id),
+                    text="Screenshot jadid (nashod forward konam)\n" + info_text,
                 )
             except Exception as e2:
                 print("[" + bot_label + "] khata dar ersal matn be review_admin: " + str(e2))
+
 
         @bot.on_message(commands=["start"])
         async def start(bot: Robot, message: Message):
@@ -300,19 +328,52 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
             if getattr(message, "file", None):
                 register_user(chat_id)
                 users = settings.setdefault("users", {})
-                users.setdefault(chat_id, {"status": "pending", "screenshots": 0})
+                users.setdefault(chat_id, {"status": "pending", "screenshots": 0, "profile_ss": False, "history_ss": False})
+                users[chat_id].setdefault("profile_ss", False)
+                users[chat_id].setdefault("history_ss", False)
                 users[chat_id]["screenshots"] += 1
                 settings["stats"]["total_screenshots"] = settings["stats"].get("total_screenshots", 0) + 1
-                save_settings(settings)
-
-                await message.reply(settings["screenshot_reply"])
 
                 file_id = get_file_id(message.file)
-                await download_screenshot(bot, file_id)
+                local_path = await download_screenshot(bot, file_id)
+
+                ocr_text = ""
+                ss_type = "unknown"
+                if local_path:
+                    ocr_text = ocr_extract_text(local_path)
+                    ss_type = detect_screenshot_type(ocr_text)
+                    print("[" + bot_label + "] OCR natije: " + ss_type + " | matn: " + ocr_text[:200].replace("\n", " "))
+
+                if ss_type in ("profile", "both"):
+                    users[chat_id]["profile_ss"] = True
+                if ss_type in ("history", "both"):
+                    users[chat_id]["history_ss"] = True
+
+                save_settings(settings)
+
+                has_profile = users[chat_id]["profile_ss"]
+                has_history = users[chat_id]["history_ss"]
+
+                if has_profile and has_history:
+                    users[chat_id]["status"] = "approved"
+                    settings["stats"]["approved"] = settings["stats"].get("approved", 0) + 1
+                    save_settings(settings)
+                    await message.reply(settings["approved_message"])
+                elif ss_type == "unknown":
+                    await message.reply(
+                        settings["screenshot_reply"] +
+                        "\n\n(In screenshot tashkhis dade nashod، lotfan screenshot vazeh az profile ya tarikhcheh befrest.)"
+                    )
+                else:
+                    missing = "tarikhcheh" if has_profile else "profile"
+                    await message.reply(
+                        settings["screenshot_reply"] +
+                        "\n\nyeki digash mundeh: screenshot az " + missing + " ham befrest."
+                    )
 
                 review_admin = settings.get("review_admin_chat_id")
                 if review_admin and chat_id != review_admin:
-                    await forward_screenshot_to_reviewer(bot, message, file_id)
+                    await forward_screenshot_to_reviewer(bot, message, file_id, ocr_text, ss_type)
                 return
 
             # sayer payam haye karbar adi (sabt kardan be onvane karbar)
