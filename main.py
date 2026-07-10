@@ -3,26 +3,19 @@ import json
 from rubka import Robot
 from rubka.context import Message
 
-# ---------------------------------------------------------
-# تنظیمات - از Environment Variables خونده میشن
-# ---------------------------------------------------------
 BOT_TOKEN = os.environ["RUBIKA_BOT_TOKEN"]
-
-# chat_id اکانت خودت (ادمین) که قراره اسکرین‌شات‌ها براش بیاد
-# اگه نمی‌دونیش، اول بدون این متغیر اجرا کن، یه پیام به ربات بفرست،
-# و از لاگ Railway توی handle_message مقدارش رو پیدا کن
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "")
 
 TEXTS_FILE = "texts.json"
 
 DEFAULT_TEXTS = {
     "start_message": (
-        "سلام 👋\n\n"
-        "برای استفاده از ربات، لطفاً ابتدا توی سایت زیر ثبت‌نام کن:\n"
-        "🔗 https://example.com\n\n"
-        "بعد از ثبت‌نام، یه اسکرین‌شات از صفحه ثبت‌نامت همینجا برام بفرست تا بررسی کنم."
+        "سلام\n\n"
+        "برای استفاده از ربات، لطفا ابتدا توی سایت زیر ثبت نام کن:\n"
+        "https://example.com\n\n"
+        "بعد از ثبت نام، یه اسکرین شات از صفحه ثبت نامت همینجا برام بفرست تا بررسی کنم."
     ),
-    "screenshot_reply": "✅ اسکرین‌شاتت دریافت شد، در حال بررسی هست. نتیجه رو بهت اطلاع می‌دم.",
+    "screenshot_reply": "اسکرین شاتت دریافت شد، در حال بررسی هست. نتیجه رو بهت اطلاع می دم.",
 }
 
 
@@ -52,43 +45,40 @@ async def start(bot: Robot, message: Message):
 async def handle_message(bot: Robot, message: Message):
     text = (message.text or "").strip()
 
-    # لاگ chat_id هر کسی که پیام می‌ده (برای پیدا کردن ADMIN_CHAT_ID اولیه)
-    print(f"📩 پیام از chat_id={message.chat_id} | text={text!r}")
+    print("payam az chat_id=" + str(message.chat_id) + " text=" + text)
 
-    # --- دستورات ادمین ---
     if ADMIN_CHAT_ID and message.chat_id == ADMIN_CHAT_ID:
         if text.startswith("/setstart "):
             texts["start_message"] = text[len("/setstart "):]
             save_texts(texts)
-            await message.reply("✅ متن استارت بروزرسانی شد.")
+            await message.reply("Matn start update shod.")
             return
 
         if text.startswith("/setreply "):
             texts["screenshot_reply"] = text[len("/setreply "):]
             save_texts(texts)
-            await message.reply("✅ متن پاسخ اسکرین‌شات بروزرسانی شد.")
+            await message.reply("Matn pasokh screenshot update shod.")
             return
 
         if text == "/gettexts":
             await message.reply(
-                f"📝 متن استارت:\n{texts['start_message']}\n\n"
-                f"📝 متن پاسخ اسکرین‌شات:\n{texts['screenshot_reply']}"
+                "Start:\n" + texts["start_message"] +
+                "\n\nScreenshot reply:\n" + texts["screenshot_reply"]
             )
             return
 
-    # --- عکس / اسکرین‌شات ---
     if getattr(message, "file", None):
         await message.reply(texts["screenshot_reply"])
 
         if ADMIN_CHAT_ID and message.chat_id != ADMIN_CHAT_ID:
             await bot.send_message(
                 ADMIN_CHAT_ID,
-                f"📸 اسکرین‌شات جدید از کاربر\nchat_id: {message.chat_id}\nfile_id: {message.file.get('file_id')}",
+                "Screenshot jadid az user\nchat_id: " + str(message.chat_id) +
+                "\nfile_id: " + str(message.file.get("file_id")),
             )
         return
 
 
 if __name__ == "__main__":
-    print("🤖 ربات رسمی روبیکا روش
-ن شد...")
+    print("Rubika bot started")
     bot.run()
