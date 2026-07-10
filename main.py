@@ -2,7 +2,7 @@ import os
 import json
 import threading
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageOps
 from rubka import Robot
 from rubka.context import Message
 
@@ -78,19 +78,48 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
         def ocr_extract_text(image_path):
             try:
                 img = Image.open(image_path)
-                text = pytesseract.image_to_string(img, lang="fas")
+                # pish-pardazesh baraye behbood deghat OCR roo matn haye rize UI:
+                # bozorg-nemayi, sepid-siah, kontrast bishtar
+                img = img.convert("L")
+                w, h = img.size
+                if max(w, h) < 2000:
+                    scale = 2
+                    img = img.resize((w * scale, h * scale), Image.LANCZOS)
+                img = ImageOps.autocontrast(img)
+                text = pytesseract.image_to_string(img, lang="fas", config="--psm 6")
                 return text
             except Exception as e:
                 print("[" + bot_label + "] khata dar OCR: " + str(e))
                 return ""
 
+        def normalize_fa(s):
+            if not s:
+                return ""
+            # yeksan-sazi harf haye arabi/farsi va hazf nim-fasele/fasele hai ezafe
+            replacements = {
+                "\u064a": "\u06cc",  # ي -> ی
+                "\u0643": "\u06a9",  # ك -> ک
+                "\u200c": " ",       # nim-fasele -> space
+                "\u200f": "",        # RLM
+                "\u200e": "",        # LRM
+            }
+            for old, new in replacements.items():
+                s = s.replace(old, new)
+            s = " ".join(s.split())  # collapse whitespace
+            return s
+
         def detect_screenshot_type(ocr_text):
             # in kalamat ro donbal migardim (mamkene OCR kamel dorost nabashe pas chandta variation check mikonim)
-            profile_keywords = ["احراز هویت شده", "احراز هویت"]
-            history_keywords = ["هدیه میلی", "کد معرف", "تکمیل پروفایل"]
+            norm_text = normalize_fa(ocr_text)
 
-            is_profile = any(k in ocr_text for k in profile_keywords)
-            is_history = any(k in ocr_text for k in history_keywords)
+            profile_keywords = ["احراز هویت شده", "احراز هویت", "هویت شد"]
+            history_keywords = ["هدیه میلی", "کد معرف", "تکمیل پروفایل", "تاریخچه"]
+
+            norm_profile_keywords = [normalize_fa(k) for k in profile_keywords]
+            norm_history_keywords = [normalize_fa(k) for k in history_keywords]
+
+            is_profile = any(k in norm_text for k in norm_profile_keywords)
+            is_history = any(k in norm_text for k in norm_history_keywords)
 
             if is_profile and not is_history:
                 return "profile"
