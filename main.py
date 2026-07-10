@@ -118,6 +118,8 @@ async def _handle_message_inner(bot: Robot, message: Message):
             return
 
     if getattr(message, "file", None):
+        print("file info: " + str(getattr(message.file, "__dict__", message.file)))
+        print("raw_data: " + str(getattr(message, "raw_data", None)))
         await message.reply(texts["screenshot_reply"])
 
         if ADMIN_CHAT_ID and message.chat_id != ADMIN_CHAT_ID:
