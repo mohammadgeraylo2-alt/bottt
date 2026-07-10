@@ -1,3 +1,4 @@
 rubka
 pytesseract
 pillow
+jdatetime
