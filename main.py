@@ -94,5 +94,6 @@ async def handle_message(bot: Robot, message: Message):
 
 
 if __name__ == "__main__":
-    print("🤖 ربات رسمی روبیکا روشن شد...")
+    print("🤖 ربات رسمی روبیکا روش
+    ن شد...")
     bot.run()
