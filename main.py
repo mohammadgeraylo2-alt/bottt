@@ -112,22 +112,30 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
             # in kalamat ro donbal migardim (mamkene OCR kamel dorost nabashe pas chandta variation check mikonim)
             norm_text = normalize_fa(ocr_text)
 
-            profile_keywords = ["احراز هویت شده", "احراز هویت", "هویت شد"]
-            history_keywords = ["هدیه میلی", "کد معرف", "تکمیل پروفایل", "تاریخچه"]
+            # neshane haye kolli safhe (sarf nazar az inke tayid shode ya na)
+            profile_page_markers = [
+                "پروفایل", "میلی پرو", "دریافت هدیه", "تنظیمات امنیتی",
+                "مدیریت حساب", "اشتراک گذاری", "درباره میلی",
+            ]
+            history_page_markers = ["تراکنش ها", "فیلتر"]
 
-            norm_profile_keywords = [normalize_fa(k) for k in profile_keywords]
-            norm_history_keywords = [normalize_fa(k) for k in history_keywords]
+            # shart ghati baraye tayid har safhe
+            profile_verified_markers = ["احراز هویت شده", "احراز هویت", "هویت شد"]
+            history_gift_words = ["هدیه", "تکمیل", "پروفایل", "معرف"]
 
-            is_profile = any(k in norm_text for k in norm_profile_keywords)
-            is_history = any(k in norm_text for k in norm_history_keywords)
+            is_profile_page = any(normalize_fa(m) in norm_text for m in profile_page_markers)
+            history_gift_found = all(normalize_fa(w) in norm_text for w in history_gift_words)
+            is_history_page = any(normalize_fa(m) in norm_text for m in history_page_markers) or history_gift_found
 
-            if is_profile and not is_history:
-                return "profile"
-            if is_history and not is_profile:
-                return "history"
-            if is_profile and is_history:
-                return "both"
-            return "unknown"
+            profile_verified = any(normalize_fa(m) in norm_text for m in profile_verified_markers)
+
+            if is_profile_page and is_history_page:
+                return {"page": "both", "profile_ok": profile_verified, "history_ok": history_gift_found}
+            if is_profile_page:
+                return {"page": "profile", "ok": profile_verified}
+            if is_history_page:
+                return {"page": "history", "ok": history_gift_found}
+            return {"page": "unknown"}
 
         async def download_screenshot(bot: Robot, file_id):
             try:
@@ -367,16 +375,38 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
                 local_path = await download_screenshot(bot, file_id)
 
                 ocr_text = ""
-                ss_type = "unknown"
+                detection = {"page": "unknown"}
                 if local_path:
                     ocr_text = ocr_extract_text(local_path)
-                    ss_type = detect_screenshot_type(ocr_text)
-                    print("[" + bot_label + "] OCR natije: " + ss_type + " | matn: " + ocr_text[:200].replace("\n", " "))
+                    detection = detect_screenshot_type(ocr_text)
+                    print("[" + bot_label + "] OCR natije: " + str(detection) + " | matn: " + ocr_text[:200].replace("\n", " "))
 
-                if ss_type in ("profile", "both"):
-                    users[chat_id]["profile_ss"] = True
-                if ss_type in ("history", "both"):
-                    users[chat_id]["history_ss"] = True
+                page = detection.get("page")
+                problem_msg = None  # age screenshot moshkel dasht, in por mishe
+
+                if page == "profile":
+                    if detection.get("ok"):
+                        users[chat_id]["profile_ss"] = True
+                    else:
+                        problem_msg = "توی این اسکرین‌شات پروفایل، هنوز احراز هویتت تایید نشده. اول احراز هویتت رو تکمیل کن بعد دوباره اسکرین‌شات بفرست."
+                elif page == "history":
+                    if detection.get("ok"):
+                        users[chat_id]["history_ss"] = True
+                    else:
+                        problem_msg = "توی این اسکرین‌شات تاریخچه، تراکنش «هدیه بابت تکمیل پروفایل با کد معرف» پیدا نشد. مطمئن شو این تراکنش انجام شده و توی تاریخچه هست."
+                elif page == "both":
+                    if detection.get("profile_ok"):
+                        users[chat_id]["profile_ss"] = True
+                    if detection.get("history_ok"):
+                        users[chat_id]["history_ss"] = True
+                    if not detection.get("profile_ok") and not detection.get("history_ok"):
+                        problem_msg = "توی این اسکرین‌شات نه احراز هویت تایید شده رو دیدم نه تراکنش هدیه‌ی تکمیل پروفایل رو. لطفا مطمئن شو هر دو انجام شدن."
+                    elif not detection.get("profile_ok"):
+                        problem_msg = "احراز هویتت هنوز توی این اسکرین‌شات تایید نشده."
+                    elif not detection.get("history_ok"):
+                        problem_msg = "تراکنش «هدیه بابت تکمیل پروفایل با کد معرف» توی تاریخچه‌ت پیدا نشد."
+                else:
+                    problem_msg = "این اسکرین‌شات از صفحه پروفایل یا تاریخچه نیست. لطفا دقیقا از صفحه «پروفایل» یا از صفحه «تاریخچه» اسکرین‌شات بگیر و بفرست."
 
                 save_settings(settings)
 
@@ -388,76 +418,7 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
                     settings["stats"]["approved"] = settings["stats"].get("approved", 0) + 1
                     save_settings(settings)
                     await message.reply(settings["approved_message"])
-                elif ss_type == "unknown":
-                    await message.reply(
-                        settings["screenshot_reply"] +
-                        "\n\n(In screenshot tashkhis dade nashod، lotfan screenshot vazeh az profile ya tarikhcheh befrest.)"
-                    )
+                elif problem_msg:
+                    await message.reply(problem_msg)
                 else:
-                    missing = "tarikhcheh" if has_profile else "profile"
-                    await message.reply(
-                        settings["screenshot_reply"] +
-                        "\n\nyeki digash mundeh: screenshot az " + missing + " ham befrest."
-                    )
-
-                review_admin = settings.get("review_admin_chat_id")
-                if review_admin and chat_id != review_admin:
-                    await forward_screenshot_to_reviewer(bot, message, file_id, ocr_text, ss_type)
-                return
-
-            # sayer payam haye karbar adi (sabt kardan be onvane karbar)
-            if not is_admin(chat_id):
-                register_user(chat_id)
-
-        print("[" + bot_label + "] ejra shod")
-        bot.run()
-
-    return run
-
-
-# ===========================================================
-# تعریف ربات‌ها
-# ===========================================================
-
-run_bot1 = make_verification_bot(
-    bot_label="bot1",
-    token_env="RUBIKA_BOT_TOKEN",
-    super_admin_env="ADMIN_CHAT_ID",
-    settings_filename="settings_bot1.json",
-)
-
-run_bot2 = make_verification_bot(
-    bot_label="bot2",
-    token_env="BOT2_TOKEN",
-    super_admin_env="ADMIN2_CHAT_ID",
-    settings_filename="settings_bot2.json",
-)
-
-# baraye ezafe kardan robat jadid:
-# run_bot3 = make_verification_bot(
-#     bot_label="bot3",
-#     token_env="BOT3_TOKEN",
-#     super_admin_env="ADMIN3_CHAT_ID",
-#     settings_filename="settings_bot3.json",
-# )
-
-BOT_FUNCTIONS = [
-    run_bot1,
-    run_bot2,
-    # run_bot3,
-]
-
-
-def main():
-    threads = []
-    for bot_func in BOT_FUNCTIONS:
-        t = threading.Thread(target=bot_func, daemon=True)
-        t.start()
-        threads.append(t)
-
-    for t in threads:
-        t.join()
-
-
-if __name__ == "__main__":
-    main()
+               
