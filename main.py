@@ -49,11 +49,21 @@ def get_file_id(file_obj):
 
 @bot.on_message(commands=["start"])
 async def start(bot: Robot, message: Message):
-    await message.reply(texts["start_message"])
+    try:
+        await message.reply(texts["start_message"])
+    except Exception as e:
+        print("khata dar start: " + str(e))
 
 
 @bot.on_message()
 async def handle_message(bot: Robot, message: Message):
+    try:
+        await _handle_message_inner(bot, message)
+    except Exception as e:
+        print("khata dar handle_message: " + str(e))
+
+
+async def _handle_message_inner(bot: Robot, message: Message):
     text = (message.text or "").strip()
 
     print("payam az chat_id=" + str(message.chat_id) + " text=" + text)
@@ -83,11 +93,14 @@ async def handle_message(bot: Robot, message: Message):
 
         if ADMIN_CHAT_ID and message.chat_id != ADMIN_CHAT_ID:
             file_id = get_file_id(message.file)
-            await bot.send_message(
-                ADMIN_CHAT_ID,
-                "Screenshot jadid az user\nchat_id: " + str(message.chat_id) +
-                "\nfile_id: " + str(file_id),
-            )
+            try:
+                await bot.send_message(
+                    chat_id=ADMIN_CHAT_ID,
+                    text="Screenshot jadid az user\nchat_id: " + str(message.chat_id) +
+                    "\nfile_id: " + str(file_id),
+                )
+            except Exception as e:
+                print("khata dar ersal be admin: " + str(e))
         return
 
 
