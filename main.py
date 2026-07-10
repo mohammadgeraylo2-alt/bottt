@@ -4,12 +4,6 @@ from rubka import Robot
 from rubka.context import Message
 
 BOT_TOKEN = os.environ["RUBIKA_BOT_TOKEN"]
-import os
-import json
-from rubka import Robot
-from rubka.context import Message
-
-BOT_TOKEN = os.environ["RUBIKA_BOT_TOKEN"]
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "").strip()
 
 TEXTS_FILE = "texts.json"
@@ -99,14 +93,7 @@ async def _handle_message_inner(bot: Robot, message: Message):
 
         if ADMIN_CHAT_ID and message.chat_id != ADMIN_CHAT_ID:
             file_id = get_file_id(message.file)
-            try:
-                await bot.send_message(
-                    chat_id=ADMIN_CHAT_ID,
-                    text="Screenshot jadid az user\nchat_id: " + str(message.chat_id) +
-                    "\nfile_id: " + str(file_id),
-                )
-            except Exception as e:
-                print("khata dar ersal be admin: " + str(e))
+            await forward_screenshot_to_admin(bot, message, file_id)
         return
 
 
