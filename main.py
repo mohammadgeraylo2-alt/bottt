@@ -94,4 +94,3 @@ async def handle_message(bot: Robot, message: Message):
 if __name__ == "__main__":
     print("Rubika bot started")
     bot.run()
-            
