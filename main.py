@@ -73,6 +73,26 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
                 return file_obj.get("file_id")
             return None
 
+        async def download_screenshot(bot: Robot, file_id):
+            try:
+                url = await bot.get_url_file(file_id)
+                print("[" + bot_label + "] file url: " + str(url))
+            except Exception as e:
+                print("[" + bot_label + "] khata dar get_url_file: " + str(e))
+                url = None
+
+            local_path = "downloaded_" + str(file_id)[:20] + ".jpg"
+            try:
+                result = await bot.download(file_id, local_path)
+                print("[" + bot_label + "] download result: " + str(result))
+                if os.path.exists(local_path):
+                    print("[" + bot_label + "] file save shod, size: " + str(os.path.getsize(local_path)))
+                    return local_path
+            except Exception as e:
+                print("[" + bot_label + "] khata dar download: " + str(e))
+
+            return None
+
         async def forward_screenshot_to_reviewer(bot: Robot, message: Message, file_id):
             review_admin = settings.get("review_admin_chat_id")
             if not review_admin:
@@ -287,9 +307,11 @@ def make_verification_bot(bot_label, token_env, super_admin_env, settings_filena
 
                 await message.reply(settings["screenshot_reply"])
 
+                file_id = get_file_id(message.file)
+                await download_screenshot(bot, file_id)
+
                 review_admin = settings.get("review_admin_chat_id")
                 if review_admin and chat_id != review_admin:
-                    file_id = get_file_id(message.file)
                     await forward_screenshot_to_reviewer(bot, message, file_id)
                 return
 
