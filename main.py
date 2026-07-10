@@ -44,12 +44,12 @@ bot = Robot(BOT_TOKEN)
 
 
 @bot.on_message(commands=["start"])
-def start(bot: Robot, message: Message):
-    message.reply(texts["start_message"])
+async def start(bot: Robot, message: Message):
+    await message.reply(texts["start_message"])
 
 
 @bot.on_message()
-def handle_message(bot: Robot, message: Message):
+async def handle_message(bot: Robot, message: Message):
     text = (message.text or "").strip()
 
     # لاگ chat_id هر کسی که پیام می‌ده (برای پیدا کردن ADMIN_CHAT_ID اولیه)
@@ -60,17 +60,17 @@ def handle_message(bot: Robot, message: Message):
         if text.startswith("/setstart "):
             texts["start_message"] = text[len("/setstart "):]
             save_texts(texts)
-            message.reply("✅ متن استارت بروزرسانی شد.")
+            await message.reply("✅ متن استارت بروزرسانی شد.")
             return
 
         if text.startswith("/setreply "):
             texts["screenshot_reply"] = text[len("/setreply "):]
             save_texts(texts)
-            message.reply("✅ متن پاسخ اسکرین‌شات بروزرسانی شد.")
+            await message.reply("✅ متن پاسخ اسکرین‌شات بروزرسانی شد.")
             return
 
         if text == "/gettexts":
-            message.reply(
+            await message.reply(
                 f"📝 متن استارت:\n{texts['start_message']}\n\n"
                 f"📝 متن پاسخ اسکرین‌شات:\n{texts['screenshot_reply']}"
             )
@@ -78,10 +78,10 @@ def handle_message(bot: Robot, message: Message):
 
     # --- عکس / اسکرین‌شات ---
     if getattr(message, "file", None):
-        message.reply(texts["screenshot_reply"])
+        await message.reply(texts["screenshot_reply"])
 
         if ADMIN_CHAT_ID and message.chat_id != ADMIN_CHAT_ID:
-            bot.send_message(
+            await bot.send_message(
                 ADMIN_CHAT_ID,
                 f"📸 اسکرین‌شات جدید از کاربر\nchat_id: {message.chat_id}\nfile_id: {message.file.get('file_id')}",
             )
@@ -89,7 +89,7 @@ def handle_message(bot: Robot, message: Message):
 
     # --- استارت (اگه از طریق فیلتر بالا نگرفته شد) ---
     if text == "/start":
-        message.reply(texts["start_message"])
+        await message.reply(texts["start_message"])
         return
 
 
