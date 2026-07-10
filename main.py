@@ -87,13 +87,8 @@ async def handle_message(bot: Robot, message: Message):
             )
         return
 
-    # --- استارت (اگه از طریق فیلتر بالا نگرفته شد) ---
-    if text == "/start":
-        await message.reply(texts["start_message"])
-        return
-
 
 if __name__ == "__main__":
     print("🤖 ربات رسمی روبیکا روش
-    ن شد...")
+ن شد...")
     bot.run()
