@@ -3,3 +3,4 @@ pytesseract
 pillow
 jdatetime
 tzdata
+pyrubi
